@@ -1,3 +1,4 @@
 .stack-work/
-karp-miller.cabal
 *~
+/.direnv/
+/.pre-commit-config.yaml

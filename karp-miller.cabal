@@ -1,0 +1,61 @@
+cabal-version:      3.0
+name:               karp-miller
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            BSD-3-Clause
+license-file:       LICENSE
+author:             Cajunvoodoo
+maintainer:         27892784+Cajunvoodoo@users.noreply.github.com
+-- copyright:
+category:           Math
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:
+      Data.VASS.Coverability.KarpMiller
+      Data.VASS.Coverability.KarpMiller.Duvet
+      Data.VASS.Coverability.KarpMiller.ExtendedNaturals
+      Data.VASS.Coverability.KarpMiller.Render
+      Data.VASS.Coverability.KarpMiller.Shared
+    -- other-modules:
+    -- other-extensions:
+    build-depends:
+     , base ^>=4.18.2.1
+     , containers
+     , vector
+     , hspec
+     , QuickCheck
+     , megaparsec
+     , filepath
+     , mtl
+     , diagrams
+     , diagrams-lib
+     , diagrams-svg
+     , diagrams-contrib
+     , diagrams-core
+     , force-layout
+     , SVGFonts
+     , vass
+     , pretty-simple
+     , duvet
+    hs-source-dirs:   src
+    default-language: Haskell2010
+    default-extensions:
+     , TypeSynonymInstances
+     , UnicodeSyntax
+     , RecordWildCards
+     , OverloadedStrings
+     , QuasiQuotes
+     , LambdaCase
+     , FlexibleInstances
+     , TupleSections
+     , LambdaCase
+     , GeneralizedNewtypeDeriving
+     , TypeFamilies
