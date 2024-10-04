@@ -564,11 +564,11 @@
         "pre-commit-hooks-nix": "pre-commit-hooks-nix_4"
       },
       "locked": {
-        "lastModified": 1728069795,
-        "narHash": "sha256-YhG/e6rwJ7+KLG9HotvLCmbzHL7FjX2wfB8FL3Ls/ww=",
+        "lastModified": 1728071454,
+        "narHash": "sha256-drxs2F3htZK+FhhCxUFPBqviPCjSxw4X18MD/grFYTk=",
         "owner": "cajunvoodoo",
         "repo": "vass",
-        "rev": "55624b1a79ef833eedd48fea75f7961b14f8983e",
+        "rev": "5c89da0e4fdcf67441f8421a47034e7cb9280464",
         "type": "github"
       },
       "original": {
