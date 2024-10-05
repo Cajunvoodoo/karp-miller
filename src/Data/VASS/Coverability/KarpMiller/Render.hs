@@ -16,7 +16,7 @@ import Data.VASS.Coverability
 
 import Data.VASS.Coverability.KarpMiller.ExtendedNaturals
 import Data.VASS.Coverability.KarpMiller.Shared
-import Data.VASS.Coverability.KarpMiller (karpMillerTree)
+import Data.VASS.Coverability.KarpMiller
 -- import Data.VASS.Coverability.KarpMillerFast
 
 import Diagrams.Prelude hiding (render)
@@ -89,8 +89,8 @@ renderKMF :: FilePath -> KMF.KMTree -> IO ()
 renderKMF path = render' path toCTree'
   (\t ->
      case t of
-       KMF.DeadEnd a -> fromIntegral (dim a + 4 + 10)
-       KMF.Node a _ -> fromIntegral (dim a + 4 + 10))
+       KMF.DeadEnd (a, _) -> fromIntegral (dim a + 4 + 10)
+       KMF.Node (a, _) _ -> fromIntegral (dim a + 4 + 10))
 
 {-| Helper function for rendering the parts of the Karp-Miller trees into strings.
 
@@ -101,9 +101,9 @@ toCTree (Node (a, t) []) = Node (show a++", " ++ show (maybe "" name t)++ " ■"
 toCTree (Node (a, t) cs) = Node (show a ++ ", " ++ show (maybe "" name t)) $ fmap toCTree cs
 
 toCTree' :: KMF.KMTree -> Tree String
-toCTree' (KMF.Node (a) []) = Node (show a ++ " ■") []
-toCTree' (KMF.Node (a) cs) = Node (show a)  $ Vector.toList (fmap toCTree' cs)
-toCTree' (KMF.DeadEnd a) = Node (show a ++ " DEAD") []
+toCTree' (KMF.Node (a, t) []) = Node (show a++", " ++ show (maybe "" name t)++ " ■") []
+toCTree' (KMF.Node (a, t) cs) = Node (show a ++ ", " ++ show (maybe "" name t)) $ Vector.toList $ fmap toCTree' cs
+toCTree' (KMF.DeadEnd (a, t)) = Node (show a ++ ", " ++ show (maybe "" name t) ++ " DEAD") []
 
 
 {-
@@ -113,8 +113,18 @@ toCTree' (KMF.DeadEnd a) = Node (show a ++ " DEAD") []
 -}
 
 test file = do
-  CovProblem system initial target <- readAny $ "test/" <> file
+  cov@(CovProblem system initial target) <- readAny $ "test/" <> file
   -- let tree = karpMillerTree initial system
   let tree = constructKarpMillerTree initial system
-  -- print $ show tree
+      res = KMF.karpMillerF cov
+  print res
   renderKMF "test-diagram.svg" tree
+  -- print $ show tree
+
+testOld file = do
+  cov@(CovProblem system initial target) <- readAny $ "test/" <> file
+  let tree = karpMillerTree initial system
+      res = karpMiller' cov
+  print res
+  renderKM "test-diagram.svg" tree
+  -- print $ show tree

@@ -20,6 +20,6 @@ rules
     #      g' = g+1,
     #      r' = r-1;
 init
-    b=1, g=2, r=2, w=0, y=1
+    b=0, g=2, r=2, w=0, y=1
 target
-    b >= 1
+    b >= 4

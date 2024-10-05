@@ -2,7 +2,7 @@
 {-| The standard Karp-Miller algorithm. This was originally implemented
     as a portion of the Kosaraju reachability algorithm for Petri Nets.
 -}
-module Data.VASS.Coverability.KarpMiller (karpMiller, karpMillerTree) where
+module Data.VASS.Coverability.KarpMiller (karpMiller, karpMillerTree, karpMiller') where
 
 import qualified Data.Vector as Vector
 import Data.Vector (Vector)
@@ -32,8 +32,16 @@ karpMiller (CovProblem vass initial target) =
     let
         tree = karpMillerTree initial vass
     in return $ if fmap fst tree `contains` extend target
-            then Unsafe
-            else Safe
+            then Safe
+            else Unsafe
+
+karpMiller' :: CovProblem -> CovResult
+karpMiller' (CovProblem vass initial target) =
+    let
+        tree = karpMillerTree initial vass
+    in if fmap fst tree `contains` extend target
+            then Safe
+            else Unsafe
 
 
 {- | Construct the Karp-Miller Tree which represents the coverability set.

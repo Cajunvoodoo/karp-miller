@@ -24,12 +24,21 @@ import qualified Data.Vector as DV
 import Data.VASS.Coverability
 import qualified Data.Vector as Vector
 import Data.Function ((&))
+import Data.VASS.Coverability.KarpMiller.Shared
 
-isSafe :: CovProblem -> IO ()
-isSafe (CovProblem v i t) = do
-    print (CovProblem v i t)
-    putStrLn $ if v `covers` t then "Unsafe" else "Safe"
+-- isSafe :: CovProblem -> IO ()
+-- isSafe (CovProblem v i t) = do
 
+--     print (CovProblem v i t)
+--     putStrLn $ if v `covers` t then "Unsafe" else "Safe"
+
+karpMillerF :: CovProblem -> CovResult
+karpMillerF (CovProblem vass initial target) =
+    let
+        tree = constructKarpMillerTree initial vass
+    in if fmap fst tree `contains` extend target
+            then Safe
+            else Unsafe
 
 
 {-| The VASS, with starting point, covers the target, iff
@@ -39,7 +48,7 @@ covers :: VASS -> Conf -> Bool
 covers cvas target =
     let
         kmt = constructKarpMillerTree target cvas
-        gt  = find (extend target <=) kmt
+        gt  = find (extend target <=) (fmap fst kmt)
     in isJust gt
 
 
@@ -58,15 +67,15 @@ constructKarpMillerTree initial v@(VASS {..})= let
     -- Given a set of ancestors (from root to current leaf) and an incident transition,
     -- produce the next node in the sequence.
 
-    generateNode :: [ExtConf] -> ExtConf -> MTL.State (Map (Name State) MaxSet) KMTree
-    generateNode ancestors ec@(Configuration currentState currentVec) = do
+    generateNode :: [ExtConf] -> (ExtConf, Maybe Transition) -> MTL.State (Map (Name State) MaxSet) KMTree
+    generateNode ancestors (ec@(Configuration currentState currentVec), t) = do
 
         maxSet <- MTL.get
 
         -- We should quit early if the current state is subsumed by one we have already found
 
         if (maxSet ! currentState) `contains` currentVec
-        then return $ DeadEnd ec
+        then return $ DeadEnd (ec, t)
         else do
 
             let
@@ -102,12 +111,12 @@ constructKarpMillerTree initial v@(VASS {..})= let
             MTL.modify $ Map.insertWith union currentState [currentVec']
 
             -- Generate the children of this node.
-            children <- mapM (generateNode ancestors' . (ec |>))
+            children <- mapM (\t -> generateNode ancestors' $ (ec |> t, Just t))
                                 (DV.fromList activeTrans)
 
-            return $ Node ec_ext children
+            return $ Node (ec_ext, t) children
 
-    in MTL.evalState (generateNode [] initial') emptyMaxsets
+    in MTL.evalState (generateNode [] (initial', Nothing)) emptyMaxsets
 
 
 
@@ -135,8 +144,8 @@ insert conf maxSet = let
 
 -- | If the configuration is less than any element of some object,
 -- we say that the object "contains" the configuration.
-contains :: Foldable f => f ExtVector -> ExtVector -> Bool
-structure `contains` conf = any (conf <=) structure
+-- contains :: Foldable f => f ExtVector -> ExtVector -> Bool
+-- structure `contains` conf = any (conf <=) structure
 
 
     {-
