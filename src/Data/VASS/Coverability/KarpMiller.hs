@@ -21,6 +21,9 @@ import Data.VASS.Coverability.KarpMiller.ExtendedNaturals
 import Data.VASS.Coverability
 import Data.VASS
 import Data.Bifunctor (first)
+import Data.Foldable (find)
+import Data.Tree (flatten)
+import Data.Ord (comparing)
 
 {-| This is the standard entrypoint for the checker as used by Duvet and other
     tools. You can evaluate it directly too if you want.
@@ -35,13 +38,19 @@ karpMiller (CovProblem vass initial target) =
             then Safe
             else Unsafe
 
-karpMiller' :: CovProblem -> CovResult
+karpMiller' :: CovProblem -> (CovResult, Maybe (Vector Transition))
 karpMiller' (CovProblem vass initial target) =
     let
         tree = karpMillerTree initial vass
+        transitions = snd <$> find (\t' -> extend target <= fst t') tree
+        -- transitions =
+        --   snd
+        --   . List.minimumBy (comparing length)
+        --   . filter (\t' -> extend target <= fst t')
+        --   $ flatten tree
     in if fmap fst tree `contains` extend target
-            then Safe
-            else Unsafe
+            then (Safe, transitions)
+            else (Unsafe, transitions)
 
 
 {- | Construct the Karp-Miller Tree which represents the coverability set.
@@ -77,8 +86,8 @@ karpMillerTree initial VASS{..} = let
                 | otherwise = v
 
     -- | Recursive depth-first construction of the KM tree.
-    treeRec :: [ExtConf] -> (ExtConf, Maybe Transition) -> Maybe KarpMillerTree
-    treeRec ancestors (current@(Configuration state vec), t) = let
+    treeRec :: [ExtConf] -> (ExtConf, Vector Transition) -> Maybe KarpMillerTree
+    treeRec ancestors (current@(Configuration state vec), ts) = let
 
         current' =
           List.foldl'
@@ -97,8 +106,8 @@ karpMillerTree initial VASS{..} = let
               --         (\(l,r) -> (,) <$> treeRec (currentWithTrans:ancestors) l <*> Just r)
               --         <$> reachables
               -- in Just $ Node current' foo
-            Just $ Node (current', t)
+            Just $ Node (current', ts)
                 $ catMaybes
-                $ (\(l, t) -> treeRec (current':ancestors) (l, Just t)) <$> reachables
+                $ (\(l, t) -> treeRec (current':ancestors) (l, Vector.snoc ts t)) <$> reachables
 
-    in fromJust $ treeRec [] (extend initial, Nothing)
+    in fromJust $ treeRec [] (extend initial, mempty)

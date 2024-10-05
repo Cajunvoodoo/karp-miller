@@ -31,6 +31,7 @@ import Diagrams.TwoD.Layout.Tree
 import Data.VASS.Read (readAny)
 import Data.VASS.Coverability.KarpMillerFast (constructKarpMillerTree)
 import qualified Data.VASS.Coverability.KarpMillerFast as KMF
+import Data.Bifunctor (second)
 
 
 -- | Given a VAS and a filepath, render the Karp-Miller tree as an SVG
@@ -89,22 +90,30 @@ renderKMF :: FilePath -> KMF.KMTree -> IO ()
 renderKMF path = render' path toCTree'
   (\t ->
      case t of
-       KMF.DeadEnd (a, _) -> fromIntegral (dim a + 4 + 10)
-       KMF.Node (a, _) _ -> fromIntegral (dim a + 4 + 10))
+       KMF.DeadEnd (a, _) -> fromIntegral (dim a + 4 + 20)
+       KMF.Node (a, _) _ -> fromIntegral (dim a + 4 + 20))
 
 {-| Helper function for rendering the parts of the Karp-Miller trees into strings.
 
     Nodes with no children (ie dead ends) are marked with a box.
 -}
 toCTree :: KarpMillerTree -> Tree String
-toCTree (Node (a, t) []) = Node (show a++", " ++ show (maybe "" name t)++ " ■") []
-toCTree (Node (a, t) cs) = Node (show a ++ ", " ++ show (maybe "" name t)) $ fmap toCTree cs
+toCTree (Node (a, ts) []) = Node (show a++", " ++ showTf ts ++ " ■") []
+toCTree (Node (a, ts) cs) = Node (show a ++ ", " ++ showTf ts) $ fmap toCTree cs
 
 toCTree' :: KMF.KMTree -> Tree String
-toCTree' (KMF.Node (a, t) []) = Node (show a++", " ++ show (maybe "" name t)++ " ■") []
-toCTree' (KMF.Node (a, t) cs) = Node (show a ++ ", " ++ show (maybe "" name t)) $ Vector.toList $ fmap toCTree' cs
-toCTree' (KMF.DeadEnd (a, t)) = Node (show a ++ ", " ++ show (maybe "" name t) ++ " DEAD") []
+toCTree' (KMF.Node (a, ts) []) = Node (show a++", \n" ++ showTf ts ++ " ■") []
+toCTree' (KMF.Node (a, ts) cs) =
+  Node
+    (show a ++ ", \n" ++ showTf ts)
+    $ Vector.toList $ fmap toCTree' cs
+toCTree' (KMF.DeadEnd (a, ts)) = Node (show a ++ ", \n" ++ showTf ts ++ " DEAD") []
 
+showT :: Transition -> String
+showT = show . name
+
+showTf :: (Show (f (Data.VASS.Name Transition)), Functor f) => f Transition -> String
+showTf = show . fmap name
 
 {-
 >>> CovProblem system initial target <- readAny "test/model-simple.spec"
@@ -116,7 +125,7 @@ test file = do
   cov@(CovProblem system initial target) <- readAny $ "test/" <> file
   -- let tree = karpMillerTree initial system
   let tree = constructKarpMillerTree initial system
-      res = KMF.karpMillerF cov
+      res = second (fmap (fmap name)) $ KMF.karpMillerF cov
   print res
   renderKMF "test-diagram.svg" tree
   -- print $ show tree
@@ -124,7 +133,9 @@ test file = do
 testOld file = do
   cov@(CovProblem system initial target) <- readAny $ "test/" <> file
   let tree = karpMillerTree initial system
-      res = karpMiller' cov
+      -- res = second (fmap name) $ karpMiller' cov
+      res = second (fmap (fmap name)) $ karpMiller' cov
+  -- print system
   print res
-  renderKM "test-diagram.svg" tree
+  -- renderKM "test-diagram.svg" tree
   -- print $ show tree

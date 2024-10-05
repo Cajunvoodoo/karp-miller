@@ -16,7 +16,7 @@ import qualified Data.Map as Map
 --------------------------------------------------------------------------------
 -- * Shared Types
 
-type KarpMillerTree = Tree (ExtConf, Maybe Transition)
+type KarpMillerTree = Tree (ExtConf, Vector Transition)
 
 
 --------------------------------------------------------------------------------

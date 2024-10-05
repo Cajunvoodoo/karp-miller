@@ -32,14 +32,14 @@ import Data.VASS.Coverability.KarpMiller.Shared
 --     print (CovProblem v i t)
 --     putStrLn $ if v `covers` t then "Unsafe" else "Safe"
 
-karpMillerF :: CovProblem -> CovResult
+karpMillerF :: CovProblem -> (CovResult, Maybe (Vector Transition))
 karpMillerF (CovProblem vass initial target) =
     let
         tree = constructKarpMillerTree initial vass
+        transitions = snd <$> find (\t' -> extend target <= fst t') tree
     in if fmap fst tree `contains` extend target
-            then Safe
-            else Unsafe
-
+            then (Safe, transitions)
+            else (Unsafe, transitions)
 
 {-| The VASS, with starting point, covers the target, iff
 we can reach some configuration which is at least the target.
@@ -67,15 +67,15 @@ constructKarpMillerTree initial v@(VASS {..})= let
     -- Given a set of ancestors (from root to current leaf) and an incident transition,
     -- produce the next node in the sequence.
 
-    generateNode :: [ExtConf] -> (ExtConf, Maybe Transition) -> MTL.State (Map (Name State) MaxSet) KMTree
-    generateNode ancestors (ec@(Configuration currentState currentVec), t) = do
+    generateNode :: [ExtConf] -> (ExtConf, Vector Transition) -> MTL.State (Map (Name State) MaxSet) KMTree
+    generateNode ancestors (ec@(Configuration currentState currentVec), ts) = do
 
         maxSet <- MTL.get
 
         -- We should quit early if the current state is subsumed by one we have already found
 
         if (maxSet ! currentState) `contains` currentVec
-        then return $ DeadEnd (ec, t)
+        then return $ DeadEnd (ec, ts)
         else do
 
             let
@@ -111,12 +111,12 @@ constructKarpMillerTree initial v@(VASS {..})= let
             MTL.modify $ Map.insertWith union currentState [currentVec']
 
             -- Generate the children of this node.
-            children <- mapM (\t -> generateNode ancestors' $ (ec |> t, Just t))
+            children <- mapM (\t -> generateNode ancestors' $ (ec |> t, ts `Vector.snoc` t))
                                 (DV.fromList activeTrans)
 
-            return $ Node (ec_ext, t) children
+            return $ Node (ec_ext, ts) children
 
-    in MTL.evalState (generateNode [] (initial', Nothing)) emptyMaxsets
+    in MTL.evalState (generateNode [] (initial', mempty)) emptyMaxsets
 
 
 
@@ -125,7 +125,7 @@ data Tree a = Node a (DV.Vector (Tree a))
             | DeadEnd a
     deriving (Functor, Foldable, Traversable, Show)
 
-type KMTree = Tree (ExtConf, Maybe Transition)
+type KMTree = Tree (ExtConf, Vector Transition)
 
 -- | We keep track of all the highest values that we have seen.
 type MaxSet = [ExtVector]
