@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-| The standard Karp-Miller algorithm. This was originally implemented
     as a portion of the Kosaraju reachability algorithm for Petri Nets.
 -}
@@ -19,6 +20,7 @@ import Data.VASS.Coverability.KarpMiller.ExtendedNaturals
 
 import Data.VASS.Coverability
 import Data.VASS
+import Data.Bifunctor (first)
 
 {-| This is the standard entrypoint for the checker as used by Duvet and other
     tools. You can evaluate it directly too if you want.
@@ -26,10 +28,10 @@ import Data.VASS
     For more direct access to the underlying tree, see 'karpMillerTree'.
 -}
 karpMiller :: CovChecker
-karpMiller (CovProblem vass initial target) = 
+karpMiller (CovProblem vass initial target) =
     let
         tree = karpMillerTree initial vass
-    in return $ if tree `contains` extend target
+    in return $ if fmap fst tree `contains` extend target
             then Unsafe
             else Safe
 
@@ -48,9 +50,9 @@ karpMillerTree initial VASS{..} = let
 
     -- | All VASS states which can be reached by one transition from our
     -- current configuration.
-    reachableFrom :: ExtConf -> [ExtConf]
-    reachableFrom conf@(Configuration state vec) = 
-        [ conf |> trans
+    reachableFrom :: ExtConf -> [(ExtConf, Transition)]
+    reachableFrom conf@(Configuration state vec) =
+        [ (conf |> trans, trans)
         | trans <- Vector.toList $ transitions !@ state
         , trans `activeFrom` conf
         ]
@@ -62,23 +64,33 @@ karpMillerTree initial VASS{..} = let
         | s /= s'          = Configuration s vec
         | ancestor <= vec  = Configuration s (Vector.zipWith makeOmega vec ancestor)
         | otherwise        = Configuration s vec
-        where makeOmega v a 
+        where makeOmega v a
                 | v > a    = Omega
                 | otherwise = v
 
     -- | Recursive depth-first construction of the KM tree.
-    treeRec :: [ExtConf] -> ExtConf -> Maybe KarpMillerTree
-    treeRec ancestors current@(Configuration state vec) = let
+    treeRec :: [ExtConf] -> (ExtConf, Maybe Transition) -> Maybe KarpMillerTree
+    treeRec ancestors (current@(Configuration state vec), t) = let
 
-        current'   = List.foldl' addOmegas current ancestors
+        current' =
+          List.foldl'
+            (\ec ec' -> addOmegas ec ec')
+            current
+            ancestors
+        reachables :: [(ExtConf, Transition)]
         reachables = reachableFrom current'
 
         -- If the node has previously been seen, we will not build it
-        in 
+        in
             if ancestors `contains` current then Nothing
             else
-            Just $ Node current' 
-                $ catMaybes 
-                $ treeRec (current':ancestors) <$> reachables
+              -- let foo =
+              --       catMaybes $
+              --         (\(l,r) -> (,) <$> treeRec (currentWithTrans:ancestors) l <*> Just r)
+              --         <$> reachables
+              -- in Just $ Node current' foo
+            Just $ Node (current', t)
+                $ catMaybes
+                $ (\(l, t) -> treeRec (current':ancestors) (l, Just t)) <$> reachables
 
-    in fromJust $ treeRec [] (extend initial)
+    in fromJust $ treeRec [] (extend initial, Nothing)

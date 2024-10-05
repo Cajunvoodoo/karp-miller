@@ -20,6 +20,7 @@ library
     import:           warnings
     exposed-modules:
       Data.VASS.Coverability.KarpMiller
+      Data.VASS.Coverability.KarpMillerFast
       Data.VASS.Coverability.KarpMiller.Duvet
       Data.VASS.Coverability.KarpMiller.ExtendedNaturals
       Data.VASS.Coverability.KarpMiller.Render
@@ -40,6 +41,7 @@ library
      , diagrams-svg
      , diagrams-contrib
      , diagrams-core
+     , diagrams-rasterific
      , force-layout
      , SVGFonts
      , vass
