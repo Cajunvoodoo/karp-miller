@@ -38,14 +38,14 @@ karpMiller depth (CovProblem vass initial target) =
             then Safe
             else Unsafe
 
-karpMiller' :: Int -> CovProblem -> (CovResult, (Vector Transition))
+karpMiller' :: Int -> CovProblem -> (CovResult, [Vector Transition])
 karpMiller' depth (CovProblem vass initial target) =
     let
         tree = karpMillerTree depth initial vass
         -- transitions = snd <$> find (\t' -> extend target <= fst t') tree
         transitions =
-          snd
-          . List.minimumBy (comparing length)
+          fmap snd
+          -- . List.sortOn length
           . filter (\t' -> extend target <= fst t')
           $ flatten tree
     in if fmap fst tree `contains` extend target
