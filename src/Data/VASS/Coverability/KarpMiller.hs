@@ -30,27 +30,27 @@ import Data.Ord (comparing)
 
     For more direct access to the underlying tree, see 'karpMillerTree'.
 -}
-karpMiller :: CovChecker
-karpMiller (CovProblem vass initial target) =
+karpMiller :: Int -> CovChecker
+karpMiller depth (CovProblem vass initial target) =
     let
-        tree = karpMillerTree initial vass
+        tree = karpMillerTree depth initial vass
     in return $ if fmap fst tree `contains` extend target
             then Safe
             else Unsafe
 
-karpMiller' :: CovProblem -> (CovResult, Maybe (Vector Transition))
-karpMiller' (CovProblem vass initial target) =
+karpMiller' :: Int -> CovProblem -> (CovResult, (Vector Transition))
+karpMiller' depth (CovProblem vass initial target) =
     let
-        tree = karpMillerTree initial vass
-        transitions = snd <$> find (\t' -> extend target <= fst t') tree
-        -- transitions =
-        --   snd
-        --   . List.minimumBy (comparing length)
-        --   . filter (\t' -> extend target <= fst t')
-        --   $ flatten tree
+        tree = karpMillerTree depth initial vass
+        -- transitions = snd <$> find (\t' -> extend target <= fst t') tree
+        transitions =
+          snd
+          . List.minimumBy (comparing length)
+          . filter (\t' -> extend target <= fst t')
+          $ flatten tree
     in if fmap fst tree `contains` extend target
             then (Safe, transitions)
-            else (Unsafe, transitions)
+            else (Unsafe, mempty)
 
 
 {- | Construct the Karp-Miller Tree which represents the coverability set.
@@ -62,8 +62,8 @@ karpMiller' (CovProblem vass initial target) =
     no pruning, the tree is always maximal and therefore the order of construction
     is not relevant. Depth-first search is more natural in a recursive format.
 -}
-karpMillerTree :: Conf -> VASS -> KarpMillerTree
-karpMillerTree initial VASS{..} = let
+karpMillerTree :: Int -> Conf -> VASS -> KarpMillerTree
+karpMillerTree maxDepth initial VASS{..} = let
 
     -- | All VASS states which can be reached by one transition from our
     -- current configuration.
@@ -86,8 +86,9 @@ karpMillerTree initial VASS{..} = let
                 | otherwise = v
 
     -- | Recursive depth-first construction of the KM tree.
-    treeRec :: [ExtConf] -> (ExtConf, Vector Transition) -> Maybe KarpMillerTree
-    treeRec ancestors (current@(Configuration state vec), ts) = let
+    -- When altitude = 0, the tree ends
+    treeRec :: Int -> [ExtConf] -> (ExtConf, Vector Transition) -> Maybe KarpMillerTree
+    treeRec altitude ancestors (current@(Configuration state vec), ts) = let
 
         current' =
           List.foldl'
@@ -99,7 +100,7 @@ karpMillerTree initial VASS{..} = let
 
         -- If the node has previously been seen, we will not build it
         in
-            if ancestors `contains` current then Nothing
+            if altitude == 0 || ancestors `contains` current then Nothing
             else
               -- let foo =
               --       catMaybes $
@@ -108,6 +109,6 @@ karpMillerTree initial VASS{..} = let
               -- in Just $ Node current' foo
             Just $ Node (current', ts)
                 $ catMaybes
-                $ (\(l, t) -> treeRec (current':ancestors) (l, Vector.snoc ts t)) <$> reachables
+                $ (\(l, t) -> treeRec (altitude - 1) (current':ancestors) (l, Vector.snoc ts t)) <$> reachables
 
-    in fromJust $ treeRec [] (extend initial, mempty)
+    in fromJust $ treeRec maxDepth [] (extend initial, mempty)

@@ -20,7 +20,7 @@ library
     import:           warnings
     exposed-modules:
       Data.VASS.Coverability.KarpMiller
-      Data.VASS.Coverability.KarpMillerFast
+      -- Data.VASS.Coverability.KarpMillerFast
       Data.VASS.Coverability.KarpMiller.Duvet
       Data.VASS.Coverability.KarpMiller.ExtendedNaturals
       Data.VASS.Coverability.KarpMiller.Render
@@ -61,3 +61,5 @@ library
      , LambdaCase
      , GeneralizedNewtypeDeriving
      , TypeFamilies
+    ghc-options:
+      -O2
