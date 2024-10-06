@@ -131,9 +131,9 @@ showTf = show . fmap name
 
 testOld file = do
   cov@(CovProblem system initial target) <- readAny $ "test/" <> file
-  let tree = karpMillerTree 4 initial system
+  let -- tree = karpMillerTree 4 initial system
       -- res = second (fmap name) $ karpMiller' 4 cov
-      res = second (fmap (fmap name)) $ karpMiller' 4 cov
+      res = second (fmap (fmap (fmap name))) $ karpMiller' 4 cov
   print system
   print res
   -- renderKM "test-diagram.svg" tree
