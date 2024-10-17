@@ -63,3 +63,4 @@ library
      , TypeFamilies
     ghc-options:
       -O2
+      -fexpose-all-unfoldings

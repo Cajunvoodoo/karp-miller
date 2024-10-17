@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeApplications, OverloadedLists #-}
 {-| The standard Karp-Miller algorithm. This was originally implemented
     as a portion of the Kosaraju reachability algorithm for Petri Nets.
 -}
@@ -65,12 +65,16 @@ karpMillerTree maxDepth initial VASS{..} = let
 
     -- | All VASS states which can be reached by one transition from our
     -- current configuration.
-    reachableFrom :: ExtConf -> [(ExtConf, Transition)]
+    reachableFrom :: ExtConf -> Vector (ExtConf, Transition)
     reachableFrom conf@(Configuration state vec) =
-        [ (conf |> trans, trans)
-        | trans <- Vector.toList $ transitions !@ state
-        , trans `activeFrom` conf
-        ]
+      let trans' = transitions !@ state
+          trans = Vector.filter (`activeFrom` conf) trans'
+      in fmap (\t -> (conf |> t, t)) trans
+        -- [ (conf |> trans, trans)
+        -- | trans <- Vector.toList $ transitions !@ state
+        -- , trans `activeFrom` conf
+        -- ]
+    {-# INLINE reachableFrom #-}
 
     -- | Our acceleration step
     -- we can jump to omega in any places which strictly increase.
@@ -85,28 +89,30 @@ karpMillerTree maxDepth initial VASS{..} = let
 
     -- | Recursive depth-first construction of the KM tree.
     -- When altitude = 0, the tree ends
-    treeRec :: Int -> [ExtConf] -> (ExtConf, Vector Transition) -> Maybe KarpMillerTree
+    treeRec :: Int -> Vector ExtConf -> (ExtConf, Vector Transition) -> Maybe KarpMillerTree
     treeRec altitude ancestors (current@(Configuration state vec), ts) = let
 
         current' =
           List.foldl'
-            (\ec ec' -> addOmegas ec ec')
+            addOmegas
             current
             ancestors
-        reachables :: [(ExtConf, Transition)]
+        reachables :: Vector (ExtConf, Transition)
         reachables = reachableFrom current'
 
         -- If the node has previously been seen, we will not build it
         in
             if altitude == 0 || ancestors `contains` current then Nothing
             else
-              -- let foo =
-              --       catMaybes $
-              --         (\(l,r) -> (,) <$> treeRec (currentWithTrans:ancestors) l <*> Just r)
-              --         <$> reachables
-              -- in Just $ Node current' foo
-            Just $ Node (current', ts)
-                $ catMaybes
-                $ (\(l, t) -> treeRec (altitude - 1) (current':ancestors) (l, Vector.snoc ts t)) <$> reachables
+            Just
+              . Node (current', ts)
+              . Vector.toList
+              $ Vector.mapMaybe
+                (\(l, t) ->
+                   treeRec
+                     (altitude - 1)
+                     (Vector.cons current' ancestors)
+                     (l, Vector.snoc ts t))
+                reachables
 
-    in fromJust $ treeRec maxDepth [] (extend initial, mempty)
+    in fromJust $ treeRec maxDepth mempty (extend initial, mempty)

@@ -29,7 +29,7 @@ import Diagrams.Backend.Rasterific
 
 import Diagrams.TwoD.Layout.Tree
 import Data.VASS.Read (readAny)
-import Data.VASS.Coverability.KarpMillerFast (constructKarpMillerTree)
+-- import Data.VASS.Coverability.KarpMillerFast (constructKarpMillerTree)
 import Data.Bifunctor (second)
 
 
